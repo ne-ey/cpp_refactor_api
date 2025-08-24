@@ -1,0 +1,105 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>AI C++ Refactor — Quick Client</title>
+  <style>
+    body { font-family: system-ui, sans-serif; padding: 16px; max-width: 1100px; margin:auto; }
+    textarea, pre { width: 100%; box-sizing: border-box; }
+    textarea { height: 220px; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    button { padding: 10px 16px; cursor: pointer; }
+    .card { border: 1px solid #ddd; border-radius: 10px; padding: 12px; }
+  </style>
+</head>
+<body>
+  <h1>AI C++ Refactor — Quick Client</h1>
+
+  <div class="card">
+    <label>Paste C++ code:</label>
+    <textarea id="code">// try me:
+#include &lt;iostream&gt;
+#include &lt;vector&gt;
+#include &lt;map&gt;
+using namespace std;
+int main(){
+  vector<int> v;
+  for(int i=0;i<10;i++){ v.push_back(i); }
+  map<int,int> mp;
+  for(int i=0;i<100;i++){ mp[i%5]++; }
+  for(int i=0;i<5;i++){ for(int j=0;j<5;j++){ cout<<i*j; } }
+  return 0;
+}
+    </textarea>
+
+    <details style="margin:10px 0">
+      <summary>Rules (optional)</summary>
+      <pre id="rules" contenteditable="true" style="border:1px solid #eee; padding:8px; border-radius:6px; white-space:pre-wrap;">
+{
+  "enable_dsa_rules": true,
+  "enable_style_rules": true,
+  "max_nested_loops": 2,
+  "prefer_unordered_map_for_count": true,
+  "suggest_reserve_on_vectors": true,
+  "suggest_emplace_back": true,
+  "prefer_range_for": true
+}
+      </pre>
+    </details>
+
+    <button id="runBtn">Refactor</button>
+    <span id="status" style="margin-left:10px;"></span>
+  </div>
+
+  <div class="row" style="margin-top:16px;">
+    <div class="card">
+      <h3>Suggestions</h3>
+      <pre id="sug"></pre>
+    </div>
+    <div class="card">
+      <h3>Optimized Code</h3>
+      <pre id="opt"></pre>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:16px;">
+    <h3>Rules Findings</h3>
+    <pre id="rulesFindings"></pre>
+  </div>
+
+  <script>
+    const runBtn = document.getElementById('runBtn');
+    const statusEl = document.getElementById('status');
+    const sug = document.getElementById('sug');
+    const opt = document.getElementById('opt');
+    const rulesFindings = document.getElementById('rulesFindings');
+
+    runBtn.onclick = async () => {
+      statusEl.textContent = 'Working...';
+      sug.textContent = ''; opt.textContent = ''; rulesFindings.textContent = '';
+
+      const code = document.getElementById('code').value;
+      let rules = undefined;
+      try { rules = JSON.parse(document.getElementById('rules').innerText); } catch(e){}
+
+      try {
+        const res = await fetch('http://127.0.0.1:8000/refactor', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code, rules })
+        });
+        const data = await res.json();
+        statusEl.textContent = res.ok ? 'OK' : ('HTTP ' + res.status);
+
+        sug.textContent = JSON.stringify(data.suggestions, null, 2);
+        opt.textContent = data.optimized_code || '';
+        rulesFindings.textContent = JSON.stringify(data.rules_findings || [], null, 2);
+
+      } catch (e) {
+        statusEl.textContent = 'Fetch failed';
+        console.error(e);
+      }
+    };
+  </script>
+</body>
+</html>
